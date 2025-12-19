@@ -1,180 +1,136 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Condition Report Data Generator</title>
-  <style>
-    :root {
-      --bg: #f5f7fa;
-      --card: #ffffff;
-      --primary: #4f46e5;
-      --primary-hover: #4338ca;
-      --text: #1e293b;
-      --border: #e2e8f0;
-      --radius: 14px;
-      --shadow: 0 8px 20px rgba(0,0,0,0.08);
-    }
-    body {
-      font-family: Inter, Arial, sans-serif;
-      background: var(--bg);
-      padding: 40px;
-      color: var(--text);
-      display: flex;
-      justify-content: center;
-    }
-    .container {
-      background: var(--card);
-      padding: 30px;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      width: 100%;
-      max-width: 1000px;
-    }
-    .accordion-item {
-      background: #fff;
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      margin-bottom: 20px;
-      overflow: hidden;
-      transition: 0.3s;
-    }
-    .accordion-header {
-      padding: 18px;
-      background: #eef2ff;
-      cursor: pointer;
-      font-size: 18px;
-      font-weight: 700;
-    }
-    .accordion-content {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease;
-      padding: 0 18px;
-    }
-    .accordion-content.open {
-      padding: 18px;
-    }
-    .weekday-row {
-      margin: 10px 0;
-      padding: 12px;
-      background: #f8fafc;
-      border-radius: var(--radius);
-      display: flex;
-      justify-content: space-between;
-    }
-    input[type="text"], input[type="number"] {
-      padding: 10px;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      width: 250px;
-    }
-    textarea {
-      width: 100%;
-      height: 300px;
-      padding: 12px;
-      border-radius: var(--radius);
-      border: 1px solid var(--border);
-      background: #f8fafc;
-      font-family: monospace;
-    }
-    button {
-      padding: 12px 16px;
-      border-radius: var(--radius);
-      border: none;
-      cursor: pointer;
-      margin-top: 12px;
-    }
-    #addDealerBtn { background: #0ea5e9; color: white; margin-bottom: 1rem;}
-    #generateBtn { background: var(--primary); color: white; }
-    #copyBtn { background: #10b981; color: white; }
-    #clearBtn { background: #e11d48; color: white; }
-  </style>
+<meta charset="UTF-8" />
+<title>Condition Report CSV Generator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<style>
+:root {
+  --bg:#f5f7fa;
+  --card:#fff;
+  --primary:#4f46e5;
+  --danger:#ef4444;
+  --success:#10b981;
+  --border:#e5e7eb;
+  --radius:14px;
+}
+body {
+  margin:0;
+  padding:40px;
+  background:var(--bg);
+  font-family:Inter,Arial,sans-serif;
+}
+.container {
+  max-width:900px;
+  margin:auto;
+  background:var(--card);
+  padding:28px;
+  border-radius:var(--radius);
+  box-shadow:0 10px 30px rgba(0,0,0,.08);
+}
+h1 { margin-top:0; }
+label { font-weight:600; display:block; margin-top:16px; }
+input, textarea {
+  width:100%;
+  padding:12px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  margin-top:6px;
+}
+textarea {
+  height:240px;
+  font-family:monospace;
+}
+.actions {
+  display:flex;
+  gap:12px;
+  margin-top:20px;
+}
+button {
+  padding:12px 18px;
+  border:none;
+  border-radius:12px;
+  font-weight:600;
+  cursor:pointer;
+}
+.generate { background:var(--primary); color:white; }
+.copy { background:var(--success); color:white; }
+.clear { background:var(--danger); color:white; }
+.footer-note {
+  margin-top:12px;
+  font-size:13px;
+  color:#64748b;
+}
+</style>
 </head>
+
 <body>
-  <div class="container">
-    <h2>Multi‑Dealership Condition Report Test Data Generator</h2>
+<div class="container">
+  <h1>Condition Report Test Data Generator</h1>
 
-    <button id="addDealerBtn">+ Add Dealership</button>
+  <label>Weeks Back</label>
+  <input type="number" id="weeksBack" value="6" min="1" max="52" />
 
-    <div id="dealershipList"></div>
+  <label>Paste CSV Input</label>
+  <textarea id="csvInput" placeholder="
+DealershipId,Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday
+abcd,6,0,0,0,0,0,0
+xyz,2,1,0,0,0,0,0
+"></textarea>
 
-    <button id="generateBtn">Generate</button>
-    <button id="copyBtn">Copy CSV</button>
-    <button id="clearBtn">Clear</button>
-
-    <h3>Generated CSV</h3>
-    <textarea id="output" readonly></textarea>
+  <div class="actions">
+    <button class="generate" onclick="generate()">Generate</button>
+    <button class="copy" onclick="copy()">Copy CSV</button>
+    <button class="clear" onclick="clearAll()">Clear</button>
   </div>
 
+  <label>Generated CSV</label>
+  <textarea id="output" readonly></textarea>
+
+  <div class="footer-note">
+    Records generated = weekday average × weeks back.  
+    Dates are deterministic and Salesforce-ready.
+  </div>
+</div>
+
 <script>
-const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-let dealerCounter = 1;
+/* ==========================
+   CONSTANTS
+========================== */
+const WEEKDAYS = [
+  'Sunday','Monday','Tuesday','Wednesday',
+  'Thursday','Friday','Saturday'
+];
 
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('addDealerBtn').onclick = addDealerSection;
-  document.getElementById('generateBtn').onclick = generateData;
-  document.getElementById('copyBtn').onclick = copyCsv;
-  document.getElementById('clearBtn').onclick = () => document.getElementById('output').value = '';
-  addDealerSection();
-});
+/* ==========================
+   CORE FUNCTIONS
+========================== */
 
-function addDealerSection() {
-  const container = document.getElementById('dealershipList');
-  const id = dealerCounter++;
-
-  const wrapper = document.createElement('div');
-  wrapper.className = 'accordion-item';
-  wrapper.innerHTML = `
-    <div class="accordion-header">Dealership ${id}</div>
-    <div class="accordion-content">
-      <label>Dealership Record Id:</label>
-      <input type="text" class="dealerId" placeholder="001xxxx" />
-
-      <label>Weeks Back:</label>
-      <input type="number" class="weeksBack" value="6" min="1" max="52" />
-
-      <h4>Select Weekdays</h4>
-      <div class="weekdayContainer"></div>
-    </div>
-  `;
-
-  container.appendChild(wrapper);
-
-  const content = wrapper.querySelector('.accordion-content');
-  const header = wrapper.querySelector('.accordion-header');
-  header.onclick = () => toggleAccordion(content);
-
-  const weekdayContainer = content.querySelector('.weekdayContainer');
-
-  weekdays.forEach(day => {
-    const row = document.createElement('div');
-    row.className = 'weekday-row';
-    row.innerHTML = `
-      <label><input type="checkbox" class="weekdayCheck" value="${day}" /> ${day}</label>
-      <input type="number" class="weekdayCount" min="0" value="0" />
-    `;
-    weekdayContainer.appendChild(row);
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines.shift().split(',').map(h => h.trim());
+  return lines.map(line => {
+    const values = line.split(',').map(v => v.trim());
+    return headers.reduce((obj, h, i) => {
+      obj[h] = values[i] || '';
+      return obj;
+    }, {});
   });
 }
 
-function toggleAccordion(content) {
-  if (content.style.maxHeight) {
-    content.style.maxHeight = null;
-    content.classList.remove('open');
-  } else {
-    content.style.maxHeight = content.scrollHeight + "px";
-    content.classList.add('open');
-  }
-}
-
-function dateForWeekdayOffset(weekdayName, weekOffset) {
-  const index = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"].indexOf(weekdayName);
+function getPastWeekdayDates(weekdayName, weeks) {
+  const targetDay = WEEKDAYS.indexOf(weekdayName);
   const today = new Date();
-  const diff = (today.getDay() - index + 7) % 7;
-  const result = new Date();
-  result.setDate(today.getDate() - diff - 7 * weekOffset);
-  result.setHours(9,50,12,0);
+  const result = [];
+
+  for (let w = 0; w < weeks; w++) {
+    const d = new Date(today);
+    const diff = (d.getDay() - targetDay + 7) % 7;
+    d.setDate(d.getDate() - diff - (7 * w));
+    d.setHours(9,50,12,0);
+    result.push(d);
+  }
   return result;
 }
 
@@ -182,81 +138,56 @@ function formatSFDate(date, suffix) {
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth()+1).padStart(2,'0');
   const dd = String(date.getDate()).padStart(2,'0');
-  const s = String(suffix).padStart(4,'0');
-  return `${yyyy}-${mm}-${dd}T09:50:12.000+${s}`;
+  return `${yyyy}-${mm}-${dd}T09:50:12.000+${String(suffix).padStart(4,'0')}`;
 }
 
-function getPastWeekdayDates(weekdayName, weeks) {
-  const arr = [];
-  for (let w = 0; w < weeks; w++) arr.push(dateForWeekdayOffset(weekdayName, w));
-  return arr;
-}
+/* ==========================
+   GENERATOR
+========================== */
 
-function generateData() {
-  let csv = ['Dealership__c	CreatedDate'];
+function generate() {
+  const weeks = parseInt(document.getElementById('weeksBack').value || '6', 10);
+  const csvText = document.getElementById('csvInput').value.trim();
+  if (!csvText) return alert('Paste CSV data first');
+
+  const data = parseCSV(csvText);
+  let out = ['Dealership__c\tCreatedDate'];
   let suffix = 1;
 
-  const sections = document.querySelectorAll('.accordion-content');
-
-  sections.forEach(sec => {
-    const dealerId = sec.querySelector('.dealerId').value.trim();
-    const weeksBack = parseInt(sec.querySelector('.weeksBack').value || '6', 10);
-
+  data.forEach(row => {
+    const dealerId = row.DealershipId;
     if (!dealerId) return;
 
-    const checks = sec.querySelectorAll('.weekdayCheck');
-    const counts = sec.querySelectorAll('.weekdayCount');
+    WEEKDAYS.forEach(day => {
+      const avg = parseInt(row[day] || '0', 10);
+      if (avg <= 0) return;
 
-    checks.forEach((chk, idx) => {
-      if (!chk.checked) return;
-
-      const rows = parseInt(counts[idx].value, 10) || 0;
-      if (rows <= 0) return;
-
-      const weekday = chk.value;
-      const dates = getPastWeekdayDates(weekday, weeksBack);
-
-      for (let i = 0; i < rows; i++) {
-        const dt = dates[Math.floor(Math.random() * dates.length)];
-        const ts = formatSFDate(dt, suffix++);
-        csv.push(`${dealerId}	${ts}`);
-      }
+      const dates = getPastWeekdayDates(day, weeks);
+      dates.forEach(d => {
+        for (let i = 0; i < avg; i++) {
+          out.push(`${dealerId}\t${formatSFDate(d, suffix++)}`);
+        }
+      });
     });
   });
 
-  document.getElementById('output').value = csv.join("\n");
+  document.getElementById('output').value = out.join('\n');
 }
 
-function copyCsv() {
+/* ==========================
+   UTILITIES
+========================== */
+
+function copy() {
   const txt = document.getElementById('output').value;
   if (!txt) return alert('Nothing to copy');
-  navigator.clipboard.writeText(txt).then(() => alert('Copied')).catch(() => alert('Copy failed'));
+  navigator.clipboard.writeText(txt).then(() => alert('Copied'));
+}
+
+function clearAll() {
+  document.getElementById('csvInput').value = '';
+  document.getElementById('output').value = '';
 }
 </script>
 </body>
 </html>
-
-<script>
-function copyCSV() {
-  const output = document.getElementById('output');
-  if (!output) return;
-  const text = output.value || '';
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(() => showToast('CSV copied')).catch(() => fallbackCopy(text));
-  } else fallbackCopy(text);
-}
-function fallbackCopy(text) {
-  const t = document.createElement('textarea');
-  t.value = text; document.body.appendChild(t); t.select();
-  try { document.execCommand('copy'); showToast('CSV copied'); } catch(e) { alert('Copy failed'); }
-  document.body.removeChild(t);
-}
-function showToast(msg) {
-  let t=document.createElement('div'); t.textContent=msg;
-  Object.assign(t.style,{position:'fixed',bottom:'20px',right:'20px',padding:'10px 16px',background:'#333',color:'#fff',borderRadius:'6px',opacity:'0',transition:'opacity .4s'});
-  document.body.appendChild(t);
-  requestAnimationFrame(()=>t.style.opacity='1');
-  setTimeout(()=>{t.style.opacity='0'; setTimeout(()=>t.remove(),400);},1200);
-}
-</script>
-
