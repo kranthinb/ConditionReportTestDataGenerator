@@ -99,8 +99,7 @@ xyz,2,1,0,0,0,0,0
    CONSTANTS
 ========================== */
 const WEEKDAYS = [
-  'Sunday','Monday','Tuesday','Wednesday',
-  'Thursday','Friday','Saturday'
+  'Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'
 ];
 
 /* ==========================
@@ -119,26 +118,42 @@ function parseCSV(text) {
   });
 }
 
+/**
+ * Returns the past N calendar dates matching weekdayName (UTC based)
+ */
 function getPastWeekdayDates(weekdayName, weeks) {
   const targetDay = WEEKDAYS.indexOf(weekdayName);
   const today = new Date();
+  
+  // Anchor at UTC midnight
+  const todayUTC = new Date(Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate()
+  ));
+
   const result = [];
 
   for (let w = 0; w < weeks; w++) {
-    const d = new Date(today);
-    const diff = (d.getDay() - targetDay + 7) % 7;
-    d.setDate(d.getDate() - diff - (7 * w));
-    d.setHours(9,50,12,0);
+    const d = new Date(todayUTC);
+    const diff = (d.getUTCDay() - targetDay + 7) % 7;
+    d.setUTCDate(d.getUTCDate() - diff - (7 * w));
+
     result.push(d);
   }
   return result;
 }
 
-function formatSFDate(date, suffix) {
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth()+1).padStart(2,'0');
-  const dd = String(date.getDate()).padStart(2,'0');
-  return `${yyyy}-${mm}-${dd}T09:50:12.000+${String(suffix).padStart(4,'0')}`;
+/**
+ * Format with fixed timestamp and no timezone drift
+ * Salesforce-friendly
+ */
+function formatSFDate(date) {
+  const yyyy = date.getUTCFullYear();
+  const mm = String(date.getUTCMonth()+1).padStart(2,'0');
+  const dd = String(date.getUTCDate()).padStart(2,'0');
+
+  return `${yyyy}-${mm}-${dd}T09:50:12.000+0000`;
 }
 
 /* ==========================
@@ -152,7 +167,6 @@ function generate() {
 
   const data = parseCSV(csvText);
   let out = ['Dealership__c\tCreatedDate'];
-  let suffix = 1;
 
   data.forEach(row => {
     const dealerId = row.DealershipId;
@@ -165,7 +179,7 @@ function generate() {
       const dates = getPastWeekdayDates(day, weeks);
       dates.forEach(d => {
         for (let i = 0; i < avg; i++) {
-          out.push(`${dealerId}\t${formatSFDate(d, suffix++)}`);
+          out.push(`${dealerId}\t${formatSFDate(d)}`);
         }
       });
     });
