@@ -129,7 +129,7 @@ function getPastWeekdayDates(weekdayName, weeks) {
   const todayUTC = new Date(Date.UTC(
     today.getUTCFullYear(),
     today.getUTCMonth(),
-    today.getUTCDate()
+    today.getUTCDate() - 1
   ));
 
   const result = [];
